@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Activity Feed Client</title>
+<style>
+:root{--bg:#0f0f12;--panel:#15151a;--bar:#1b1b21;--line:#2a2a33;--tx:#e8e8ee;--mut:#8b8b99;--teal:#2fd3c2;--orange:#f5a52b;--violet:#9b6cff;--pill:#2b2b34;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--tx);font:14px/1.35 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+#app{height:100%;display:flex;flex-direction:column;border:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:6px;background:var(--bar);padding:6px 8px;border-bottom:1px solid var(--line);position:relative}
+.top button,.menu-btn{background:#24242c;border:1px solid var(--line);color:var(--tx);border-radius:5px;padding:4px 9px;font-size:12px;cursor:pointer;font-family:inherit}
+.top button:hover{background:#2e2e38}
+.top button.on{background:#3a2f6b;border-color:var(--violet)}
+.sp{flex:1}
+.search{background:#101014;border:1px solid var(--line);border-radius:5px;color:var(--tx);padding:4px 8px 4px 26px;font-size:12px;width:170px;max-width:34vw;outline:none;font-family:inherit}
+.search:focus{border-color:var(--violet)}
+.sw{position:relative}.sw:before{content:"⌕";position:absolute;left:8px;top:2px;color:var(--mut);font-size:15px}
+.sec{display:flex;flex-direction:column;min-height:60px;overflow:hidden}
+.sechead{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);padding:5px 12px;background:#121217;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+.list{overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:#3a3a46 transparent}
+#s1{flex:0 0 55%}#s2{flex:1}
+.split{height:7px;background:var(--bar);border-top:1px solid var(--line);border-bottom:1px solid var(--line);cursor:row-resize;position:relative;flex:none}
+.split:after{content:"";position:absolute;left:50%;top:2px;width:36px;height:2px;margin-left:-18px;background:#555;border-radius:2px}
+.split:hover,.split.drag{background:#2a2450}
+.ev{display:flex;gap:10px;padding:9px 12px;border-bottom:1px solid #1d1d24;animation:in .35s ease}
+.compact .ev{padding:4px 12px}
+@keyframes in{from{background:#2a2450;transform:translateY(-6px);opacity:0}to{background:transparent;transform:none;opacity:1}}
+.main{flex:1;min-width:0}
+.line1{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.name{font-weight:700;cursor:pointer}
+.don .name{color:var(--teal)}.sub .name,.gift .name{color:var(--orange)}.follow .name{color:#c9a7ff}.bits .name{color:#6ea8ff}.raid .name{color:#ff7a8a}
+.badge{background:var(--pill);border:1px solid #3a3a46;border-radius:12px;padding:1px 9px;font-size:12px;font-weight:600;white-space:nowrap}
+.badge.gold{background:#e9b949;color:#1b1400;border-color:#e9b949}
+.badge.amt{background:#23343a;border-color:#2f5a63}
+.msg{margin-top:4px;color:#d6d6de;word-break:break-word;font-weight:600}
+.msg a{color:var(--violet);text-decoration:underline}
+.time{color:var(--mut);font-size:12px;white-space:nowrap;padding-top:2px}
+.nores{color:var(--mut);padding:16px;text-align:center}
+.pop{position:absolute;top:36px;background:#1d1d25;border:1px solid var(--line);border-radius:8px;padding:8px;z-index:20;min-width:210px;box-shadow:0 8px 24px #000a;display:none}
+.pop.show{display:block}
+.pop label{display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:13px;cursor:pointer;border-radius:4px}
+.pop label:hover{background:#262630}
+.pop h4{margin:4px 6px 6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 6px;border-bottom:1px solid #26262f}
+.row:last-of-type{border:0}
+.note{font-size:11.5px;color:var(--mut);padding:6px;line-height:1.4}
+.ok{color:#5be08a;font-size:12px}
+input[type=range]{width:120px}
+.live{width:8px;height:8px;border-radius:50%;background:#5be08a;display:inline-block;margin-right:6px}
+.paused .live{background:#e05b5b}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top" id="top">
+    <button id="bPause" title="Feed pausieren / fortsetzen">⏸</button>
+    <button id="bClear" title="Liste leeren">🗑</button>
+    <button id="bTest" title="Test-Event">＋ Test</button>
+    <button id="bClient">Client</button>
+    <button id="bFilter">Filter</button>
+    <button id="bView">View</button>
+    <span class="sp"></span>
+    <span class="sw"><input class="search" id="q" placeholder="Benutzer suchen"></span>
+
+    <div class="pop" id="pClient" style="left:120px;width:340px">
+      <h4>Verbindungen</h4>
+      <div class="row"><span>Twitch</span><button data-svc="Twitch">Mit Twitch anmelden</button></div>
+      <div class="row"><span>StreamElements</span><button data-svc="StreamElements">Verbinden</button></div>
+      <div class="row"><span>Streamlabs</span><button data-svc="Streamlabs">Verbinden</button></div>
+      <div class="row"><span>Tipeeestream</span><button data-svc="Tipeeestream">Verbinden</button></div>
+      <div class="note">Prototyp: Die Buttons simulieren nur den Status. Für die echte Anmeldung öffnet die fertige App den Browser, du klickst auf „Autorisieren“ und die App empfängt den Token. Dafür braucht es eine Desktop-Hülle (z. B. Electron) und eigene Client-IDs von Twitch & Co.</div>
+    </div>
+    <div class="pop" id="pFilter" style="left:190px">
+      <h4>Anzeigen: Spenden</h4>
+      <label><input type="checkbox" data-f="don" checked> Donations</label>
+      <h4>Anzeigen: Twitch</h4>
+      <label><input type="checkbox" data-f="sub" checked> Subs / Resubs</label>
+      <label><input type="checkbox" data-f="gift" checked> Gift Subs</label>
+      <label><input type="checkbox" data-f="follow" checked> Follows</label>
+      <label><input type="checkbox" data-f="bits" checked> Bits</label>
+      <label><input type="checkbox" data-f="raid" checked> Raids</label>
+    </div>
+    <div class="pop" id="pView" style="left:250px">
+      <h4>Ansicht</h4>
+      <label><input type="checkbox" id="vCompact"> Kompakt</label>
+      <label><input type="checkbox" id="vTime" checked> Zeit anzeigen</label>
+      <label><input type="checkbox" id="vDemo" checked> Demo-Events automatisch</label>
+      <div class="row"><span>Schriftgröße</span><input type="range" id="vSize" min="11" max="20" value="14"></div>
+    </div>
+  </div>
+
+  <div class="sec" id="s1"><div class="sechead"><span><i class="live"></i>Spenden</span><span id="c1"></span></div><div class="list" id="l1"></div></div>
+  <div class="split" id="split" title="Ziehen, um die Größe zu ändern"></div>
+  <div class="sec" id="s2"><div class="sechead"><span>Twitch</span><span id="c2"></span></div><div class="list" id="l2"></div></div>
+</div>
+
+<script>
+(function(){
+var $=function(s){return document.querySelector(s)};
+var names=["zdyfox","redeyrex","ebl87","hscfck","yung_yannick","moritzb231","andado_","john787g","denniskrups","emfconnor","bnjmm.pnt","klaus_k","lenaaa","tvmax","pixelpaul"];
+var msgs=["Du musst mir unbedingt was spendieren für die letzten 30 Minuten, bin jetzt Hirngeschädigt dabei dir zuzusehen","Mach weiter so, bester Stream! https://www.twitch.tv/","Grüße aus Hamburg, schau dir mal das an: https://www.instagram.com/","Bitte spiel das nächste Lied von deinem Album","Für den guten Content ❤"];
+var S={ev:[],paused:false,filt:{don:1,sub:1,gift:1,follow:1,bits:1,raid:1},time:1,compact:0,demo:1,size:14,split:55};
+try{var sv=JSON.parse(localStorage.getItem("afc")||"null");if(sv){for(var k in sv)if(k!=="ev")S[k]=sv[k]}}catch(e){}
+function save(){try{var c={};for(var k in S)if(k!=="ev"&&k!=="paused")c[k]=S[k];localStorage.setItem("afc",JSON.stringify(c))}catch(e){}}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function link(t){return esc(t).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>')}
+function ago(ts){var s=Math.floor((Date.now()-ts)/1000);if(s<60)return s+" Sek.";var m=Math.floor(s/60);if(m<60)return m+" Min.";var h=Math.floor(m/60);if(h<24)return h+" Std.";return Math.floor(h/24)+" Tg."}
+function rnd(a){return a[Math.floor(Math.random()*a.length)]}
+function mk(type){
+  var e={type:type,name:rnd(names),ts:Date.now(),id:Math.random()};
+  if(type==="don"){e.amt=rnd([1,2,3,5,10,20,50]);e.msg=rnd(msgs)}
+  if(type==="sub"){e.months=rnd([1,2,4,12,40,67,92,106]);e.tier=rnd(["Prime","Prime","T1","T2","T3"])}
+  if(type==="gift"){e.n=rnd([1,5,10]);e.tier="T1"}
+  if(type==="bits"){e.n=rnd([100,500,1000,5000]);e.msg=rnd(msgs)}
+  if(type==="raid"){e.n=rnd([5,23,150])}
+  return e;
+}
+function html(e){
+  var n='<span class="name" data-u="'+esc(e.name)+'">'+(e.type==="sub"||e.type==="gift"?"☆ ":e.type==="follow"?"♥ ":e.type==="bits"?"◆ ":"")+esc(e.name)+'</span>';
+  var l="",m="";
+  if(e.type==="don"){l=n+'<span class="badge amt">'+e.amt+' '+esc(e.cur||'€')+'</span>';m=e.msg}
+  if(e.type==="sub"){l=n+'<span class="badge'+(e.months>=60?' gold':'')+'">'+e.months+' Monat'+(e.months>1?'e':'')+'</span><span class="badge">'+(e.tier==="Prime"?"♛ Prime":e.tier)+'</span>'}
+  if(e.type==="gift"){l=n+'<span class="badge">verschenkt '+e.n+' Sub'+(e.n>1?'s':'')+'</span><span class="badge">'+e.tier+'</span>'}
+  if(e.type==="follow"){l=n+'<span class="badge">folgt jetzt</span>'}
+  if(e.type==="bits"){l=n+'<span class="badge">'+e.n+' Bits</span>';m=e.msg}
+  if(e.type==="raid"){l=n+'<span class="badge">Raid mit '+e.n+'</span>'}
+  return '<div class="ev '+e.type+'"><div class="main"><div class="line1">'+l+'</div>'+(m?'<div class="msg">'+link(m)+'</div>':'')+'</div>'+(S.time?'<div class="time" data-ts="'+e.ts+'">'+ago(e.ts)+'</div>':'')+'</div>';
+}
+function render(){
+  var q=$("#q").value.trim().toLowerCase();
+  var a=[],b=[];
+  S.ev.forEach(function(e){
+    if(!S.filt[e.type])return;
+    if(q&&e.name.toLowerCase().indexOf(q)<0)return;
+    (e.type==="don"?a:b).push(e);
+  });
+  $("#l1").innerHTML=a.length?a.map(html).join(""):'<div class="nores">Keine Spenden</div>';
+  $("#l2").innerHTML=b.length?b.map(html).join(""):'<div class="nores">Keine Twitch-Events</div>';
+  $("#c1").textContent=a.length;$("#c2").textContent=b.length;
+  document.documentElement.style.fontSize=S.size+"px";
+  document.body.style.fontSize=S.size+"px";
+  $("#app").classList.toggle("compact",!!S.compact);
+  $("#app").classList.toggle("paused",S.paused);
+  $("#s1").style.flex="0 0 "+S.split+"%";
+}
+function add(e){S.ev.unshift(e);if(S.ev.length>300)S.ev.pop();render()}
+// start data
+for(var i=0;i<14;i++){var t=rnd(["don","sub","sub","follow","bits","gift","raid"]);var e=mk(t);e.ts=Date.now()-i*i*40000-5000;S.ev.push(e)}
+S.ev.sort(function(a,b){return b.ts-a.ts});
+// popups
+function closeAll(){document.querySelectorAll(".pop").forEach(function(p){p.classList.remove("show")})}
+function tog(btn,pop){$(btn).onclick=function(ev){ev.stopPropagation();var p=$(pop),was=p.classList.contains("show");closeAll();if(!was)p.classList.add("show")}}
+tog("#bClient","#pClient");tog("#bFilter","#pFilter");tog("#bView","#pView");
+document.addEventListener("click",function(e){if(!e.target.closest(".pop"))closeAll()});
+document.querySelectorAll(".pop").forEach(function(p){p.addEventListener("click",function(e){e.stopPropagation()})});
+// filter
+document.querySelectorAll("[data-f]").forEach(function(c){c.checked=!!S.filt[c.dataset.f];c.onchange=function(){S.filt[c.dataset.f]=c.checked?1:0;save();render()}});
+// view
+$("#vCompact").checked=!!S.compact;$("#vTime").checked=!!S.time;$("#vDemo").checked=!!S.demo;$("#vSize").value=S.size;
+$("#vCompact").onchange=function(e){S.compact=e.target.checked?1:0;save();render()};
+$("#vTime").onchange=function(e){S.time=e.target.checked?1:0;save();render()};
+$("#vDemo").onchange=function(e){S.demo=e.target.checked?1:0;save()};
+$("#vSize").oninput=function(e){S.size=+e.target.value;save();render()};
+// buttons
+$("#bPause").onclick=function(){S.paused=!S.paused;this.textContent=S.paused?"▶":"⏸";this.classList.toggle("on",S.paused);render()};
+$("#bClear").onclick=function(){S.ev=[];render()};
+$("#bTest").onclick=function(){add(mk(rnd(["don","sub","follow","bits","gift","raid"])))};
+$("#q").oninput=render;
+// click name -> search
+document.addEventListener("click",function(e){var n=e.target.closest(".name");if(n){$("#q").value=n.dataset.u;render()}});
+// login (demo)
+document.querySelectorAll("[data-svc]").forEach(function(b){b.onclick=function(){var on=b.dataset.on==="1";b.dataset.on=on?"0":"1";b.outerHTML=b.outerHTML;}});
+document.querySelectorAll("[data-svc]").forEach(function(b){var orig=b.textContent;b.onclick=function(){var on=b.dataset.on==="1";b.dataset.on=on?"0":"1";b.textContent=on?orig:"✓ Verbunden (Demo)";b.classList.toggle("on",!on)}});
+// splitter
+var sp=$("#split");
+sp.addEventListener("pointerdown",function(e){sp.setPointerCapture(e.pointerId);sp.classList.add("drag");
+  var top=$("#s1").getBoundingClientRect().top,tot=$("#s1").offsetHeight+$("#s2").offsetHeight+sp.offsetHeight;
+  function mv(ev){var p=(ev.clientY-top)/tot*100;S.split=Math.max(10,Math.min(90,p));$("#s1").style.flex="0 0 "+S.split+"%"}
+  function up(){sp.classList.remove("drag");sp.removeEventListener("pointermove",mv);sp.removeEventListener("pointerup",up);save()}
+  sp.addEventListener("pointermove",mv);sp.addEventListener("pointerup",up)});
+// timers
+setInterval(function(){document.querySelectorAll(".time").forEach(function(t){t.textContent=ago(+t.dataset.ts)})},1000);
+setInterval(function(){if(S.demo&&!S.paused)add(mk(rnd(["don","sub","sub","follow","bits","gift","raid"])))},6000);
+render();window.__afc={add:add,S:S,render:render};
+})();
+</script>
+<script src="bridge.js"></script></body>
+</html>
